@@ -6,6 +6,7 @@ from homeassistant import config_entries
 from homeassistant.helpers import selector
 from .const import DOMAIN
 
+
 def get_scraper_list():
     """scrapers 폴더 내의 파일을 읽어 내부의 SCRAPER_NAME 변수를 가져옵니다."""
     scraper_dir = os.path.join(os.path.dirname(__file__), "scrapers")
@@ -77,8 +78,14 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_pipe(self, user_input=None):
         """2단계 (분기A): 스크래퍼 기반 구경 선택 단계"""
         errors = {}
-        authority = self.init_data["authority"]
+        authority = self.init_data.get["authority"]
 
+        if user_input is not None:
+            # 기존 데이터와 새 데이터를 통합
+            final_data = {**self.init_data, **user_input}
+            return self.async_create_entry(
+                title=f"수도요금 ({authority})", 
+                data=final_data
         try:
             # 상대 경로 임포트 문제 방지를 위해 importlib 사용
             module = importlib.import_module(f".scrapers.{authority}", __package__)
@@ -90,17 +97,11 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception:
             pipe_options = ["13㎜", "20㎜", "25㎜"]
 
-        if user_input is not None:
-            self.init_data.update(user_input)
-            return self.async_create_entry(
-                title=f"수도요금 ({authority} - {user_input['pipe_size']})", 
-                data=self.init_data
-            )
 
         return self.async_show_form(
             step_id="pipe",
             data_schema=vol.Schema({
-                vol.Required("pipe_size"): vol.In(pipe_options)
+                vol.Required("pipe_size", default=pipe_options[0]): vol.In(pipe_options)
             }),
             errors=errors
         )
