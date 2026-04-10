@@ -5,7 +5,9 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 from .const import DOMAIN
+import logging
 
+_LOGGER = logging.getLogger(__name__)
 
 def get_scraper_list():
     """scrapers 폴더 내의 파일을 읽어 내부의 SCRAPER_NAME 변수를 가져옵니다."""
@@ -88,7 +90,7 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=final_data
         try:
             # 상대 경로 임포트 문제 방지를 위해 importlib 사용
-            module = importlib.import_module(f".scrapers.{authority}", __package__)
+            module = importlib.import_module(f"custom_components.{DOMAIN}.scrapers.{authority}")
             rates = await self.hass.async_add_executor_job(module.get_rates)
             pipe_options = list(rates.get("base_fees", {}).keys())
             
