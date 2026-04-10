@@ -6,7 +6,7 @@
   "issue_tracker": "https://github.com/newbie-0707/ha-water-bill/issues",
   "codeowners": ["@newbie-0707"],
   "requirements": ["aiohttp", "beautifulsoup4", "python-dateutil"],
-  "version": "1.0.2",
+  "version": "1.0.3",
   "iot_class": "cloud_polling",
   "core_config_version": "2026.2"
 }
