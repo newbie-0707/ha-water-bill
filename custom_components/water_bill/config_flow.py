@@ -79,6 +79,7 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=f"수도요금 ({authority})", 
                 data=final_data
+            )
         try:
             # 상대 경로 임포트 문제 방지를 위해 importlib 사용
             module = importlib.import_module(f"custom_components.{DOMAIN}.scrapers.{authority}")
