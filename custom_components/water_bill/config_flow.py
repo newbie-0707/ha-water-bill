@@ -1,18 +1,16 @@
-import importlib
+import logging
+import os
+import importlib.util
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 from .const import DOMAIN
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
 def sync_get_scraper_list():
     """파일 시스템에 접근하는 동기 함수 (별도 스레드에서 실행될 것)"""
     
-    import importlib.util
-    import os
-
     scraper_dir = os.path.join(os.path.dirname(__file__), "scrapers")
     options = {}
 
@@ -22,7 +20,6 @@ def sync_get_scraper_list():
                 module_name = filename[:-3]
                 file_path = os.path.join(scraper_dir, filename)
                 try:
-                    # 이 부분이 블로킹 호출이므로 executor에서 실행되어야 함
                     spec = importlib.util.spec_from_file_location(module_name, file_path)
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
@@ -37,30 +34,22 @@ def sync_get_scraper_list():
 class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
-    def __init__(self):
-        """데이터 임시 저장을 위한 초기화"""
-        self.init_data = {}
-
     async def async_step_user(self, user_input=None):
-        """1단계: 기본 정보 설정"""
+        """Handle the initial step."""
         if user_input is not None:
             self.init_data = user_input
-            
-            # 1. 수동 입력을 선택한 경우
             if user_input["authority"] == "manual":
                 return await self.async_step_manual()
-            
-            # 2. 지자체 스크래퍼를 선택했고 정액제 적용을 체크한 경우
             if user_input.get("apply_fixed_rate"):
                 return await self.async_step_pipe()
             
-            # 3. 그 외 (스크래퍼 선택 + 정액제 미사용)
             return self.async_create_entry(
                 title=f"수도요금 ({user_input['authority']})", 
                 data=self.init_data
             )
 
-        scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list, self.hass)
+        # 블로킹 호출 방지: 별도 스레드에서 실행
+        scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list)
         
         DATA_SCHEMA = vol.Schema({
             vol.Required("authority"): vol.In(scraper_options),
