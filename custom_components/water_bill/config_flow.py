@@ -1,6 +1,4 @@
-import os
 import importlib
-import importlib.util
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
@@ -11,6 +9,10 @@ _LOGGER = logging.getLogger(__name__)
 
 def sync_get_scraper_list():
     """파일 시스템에 접근하는 동기 함수 (별도 스레드에서 실행될 것)"""
+    
+    import importlib.util
+    import os
+
     scraper_dir = os.path.join(os.path.dirname(__file__), "scrapers")
     options = {}
 
@@ -58,7 +60,7 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=self.init_data
             )
 
-        scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list)
+        scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list, self.hass)
         
         DATA_SCHEMA = vol.Schema({
             vol.Required("authority"): vol.In(scraper_options),
