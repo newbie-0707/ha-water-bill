@@ -9,8 +9,8 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-def get_scraper_list():
-    """scrapers 폴더 내의 파일을 읽어 내부의 SCRAPER_NAME 변수를 가져옵니다."""
+def sync_get_scraper_list():
+    """파일 시스템에 접근하는 동기 함수 (별도 스레드에서 실행될 것)"""
     scraper_dir = os.path.join(os.path.dirname(__file__), "scrapers")
     options = {}
 
@@ -19,8 +19,8 @@ def get_scraper_list():
             if filename.endswith(".py") and filename != "__init__.py":
                 module_name = filename[:-3]
                 file_path = os.path.join(scraper_dir, filename)
-
                 try:
+                    # 이 부분이 블로킹 호출이므로 executor에서 실행되어야 함
                     spec = importlib.util.spec_from_file_location(module_name, file_path)
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
@@ -58,7 +58,7 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=self.init_data
             )
 
-        scraper_options = get_scraper_list()
+        scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list)
         
         DATA_SCHEMA = vol.Schema({
             vol.Required("authority"): vol.In(scraper_options),
