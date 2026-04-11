@@ -1,3 +1,25 @@
+import logging
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.components.sensor import SensorEntity
+from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    """이 함수가 반드시 있어야 AttributeError가 사라집니다."""
+    async_add_entities([WaterBillSensor(entry)], update_before_add=True)
+
+class WaterBillSensor(SensorEntity):
+    def __init__(self, entry):
+        self._entry = entry
+        self._attr_name = f"Water Bill {entry.data.get('authority', '')}"
+        self._attr_unique_id = f"{entry.entry_id}_total_bill"
+        self._attr_native_value = 0
+        self._attr_native_unit_of_measurement = "KRW"
+        
+
 async def async_update(self):
         """핵심 요금 계산 로직"""
         state = self.hass.states.get(self._usage_sensor_id)
