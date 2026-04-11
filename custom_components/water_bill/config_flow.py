@@ -35,48 +35,43 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """첫 번째 설정 단계"""
-        errors = {}
-        
+        """설정 단계 시작"""
         if user_input is not None:
             self.init_data = user_input
-            try:
-                # '구경별 정액요금 적용'이 체크된 경우에만 pipe 단계로 이동
-                if user_input.get("apply_fixed_rate"):
-                    return await self.async_step_pipe()
-                
-                # 체크 안 된 경우 즉시 생성
-                return self.async_create_entry(
-                    title=f"수도 요금 ({user_input['authority']})", 
-                    data=self.init_data
-                )
-            except Exception: # 예기치 못한 에러 방지
-                errors["base"] = "unknown"
+            
+            # 체크박스 여부에 따라 다음 단계로 가거나 여기서 마침
+            if user_input.get("apply_fixed_rate"):
+                return await self.async_step_pipe()
+            
+            # 고정요금 미적용 시 즉시 엔트리 생성
+            return self.async_create_entry(
+                title=f"수도 요금 ({user_input['authority']})", 
+                data=user_input  # self.init_data 대신 직접 전달하여 안정성 확보
+            )
 
-        # 스크래퍼 목록 비동기로 가져오기
+        # 로거 확인 및 스크래퍼 목록 로드
         scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list)
         
-        DATA_SCHEMA = vol.Schema({
-            vol.Required("authority"): vol.In(scraper_options),
-            vol.Required("usage_type", default="domestic"): vol.In({
-                "domestic": "가정용",
-                "commercial": "일반용",
-                "industrial": "산업용"
-            }),
-            vol.Required("usage_sensor"): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="water")
-            ),
-            vol.Required("reading_day", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=31)),
-            vol.Required("billing_cycle", default=1): vol.In({1: "매달", 2: "격월"}),
-            vol.Required("apply_fixed_rate", default=True): bool,
-        })
-
         return self.async_show_form(
-            step_id="user", 
-            data_schema=DATA_SCHEMA,
-            errors=errors
+            step_id="user",
+            data_schema=vol.Schema({
+                vol.Required("authority"): vol.In(scraper_options),
+                vol.Required("usage_type", default="domestic"): vol.In({
+                    "domestic": "가정용",
+                    "commercial": "일반용",
+                    "industrial": "산업용"
+                }),
+                vol.Required("usage_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="water")
+                ),
+                vol.Required("reading_day", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=31)),
+                vol.Required("billing_cycle", default=1): vol.In({1: "매달", 2: "격월"}),
+                vol.Required("apply_fixed_rate", default=True): bool,
+            })
         )
+    
 
+    
     async def async_step_pipe(self, user_input=None):
         """2단계 (분기A): 스크래퍼 기반 구경 선택 단계"""
         errors = {}
