@@ -35,21 +35,20 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """설정 단계 시작"""
+        """첫 번째 설정 단계"""
         if user_input is not None:
-            self.init_data = user_input
-            
-            # 체크박스 여부에 따라 다음 단계로 가거나 여기서 마침
+            # 'apply_fixed_rate'가 True면 다음 단계(pipe)로, False면 여기서 완료
             if user_input.get("apply_fixed_rate"):
+                self.init_data = user_input # 다음 단계를 위해 저장
                 return await self.async_step_pipe()
             
-            # 고정요금 미적용 시 즉시 엔트리 생성
+            # 여기서 바로 생성 (가장 안전한 방식)
             return self.async_create_entry(
                 title=f"수도 요금 ({user_input['authority']})", 
-                data=user_input  # self.init_data 대신 직접 전달하여 안정성 확보
+                data=user_input
             )
 
-        # 로거 확인 및 스크래퍼 목록 로드
+        # UI 스키마 정의
         scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list)
         
         return self.async_show_form(
@@ -69,39 +68,24 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("apply_fixed_rate", default=True): bool,
             })
         )
-    
 
-    
     async def async_step_pipe(self, user_input=None):
-        """2단계 (분기A): 스크래퍼 기반 구경 선택 단계"""
-        errors = {}
-        authority = self.init_data.get["authority"]
-
+        """두 번째 단계: 구경 설정"""
         if user_input is not None:
-            # 기존 데이터와 새 데이터를 통합
+            # 첫 번째 단계 데이터와 합치기
             final_data = {**self.init_data, **user_input}
             return self.async_create_entry(
-                title=f"수도요금 ({authority})", 
+                title=f"수도 요금 ({final_data['authority']})", 
                 data=final_data
             )
-        try:
-            # 상대 경로 임포트 문제 방지를 위해 importlib 사용
-            module = importlib.import_module(f"custom_components.{DOMAIN}.scrapers.{authority}")
-            rates = await self.hass.async_add_executor_job(module.get_rates)
-            pipe_options = list(rates.get("base_fees", {}).keys())
-            
-            if not pipe_options:
-                pipe_options = ["기본(단일 요율)"]
-        except Exception:
-            pipe_options = ["13㎜", "20㎜", "25㎜"]
-
 
         return self.async_show_form(
             step_id="pipe",
             data_schema=vol.Schema({
-                vol.Required("pipe_size", default=pipe_options[0]): vol.In(pipe_options)
-            }),
-            errors=errors
+                vol.Required("pipe_size", default=13): vol.In({
+                    13: "13mm", 20: "20mm", 25: "25mm", 32: "32mm", 40: "40mm"
+                })
+            })
         )
 
     async def async_step_manual(self, user_input=None):
