@@ -66,7 +66,10 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("apply_fixed_rate", default=True): bool,
         })
 
-        return self.async_show_form(step_id="user", data_schema=DATA_SCHEMA)
+        return self.async_show_form(
+            step_id="user", 
+            data_schema=DATA_SCHEMA
+        ) # 이 괄호들이 잘 닫혀 있는지 확인!
 
     async def async_step_pipe(self, user_input=None):
         """2단계 (분기A): 스크래퍼 기반 구경 선택 단계"""
