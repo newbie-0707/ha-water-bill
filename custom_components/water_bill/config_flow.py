@@ -38,13 +38,13 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         if user_input is not None:
             self.init_data = user_input
-            if user_input["authority"] == "manual":
-                return await self.async_step_manual()
+            # 구미시 등을 선택하고 구경별 정액요금을 적용할 때만 다음 단계로
             if user_input.get("apply_fixed_rate"):
                 return await self.async_step_pipe()
             
+            # 체크 해제 시 즉시 생성
             return self.async_create_entry(
-                title=f"수도요금 ({user_input['authority']})", 
+                title=f"수도 요금 ({user_input['authority']})", 
                 data=self.init_data
             )
 
