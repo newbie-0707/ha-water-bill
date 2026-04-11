@@ -6,6 +6,30 @@ _LOGGER = logging.getLogger(__name__)
 
 SCRAPER_NAME = "구미시 상수도사업소"
 
+
+class GumiScraper:
+    def calculate(self, usage, usage_type, pipe_size):
+        # 1. 누진 단계 판단 (예: 구미시는 3단계)
+        step = 1
+        if usage > 30: step = 3
+        elif usage > 20: step = 2
+        
+        # 2. 결과 리턴 (금액과 함께 메타데이터 포함)
+        return {
+            "total_bill": 15400,
+            "current_step": step,
+            "total_steps": 3,  # 해당 사업소의 총 단계수
+            "unit_price": 540  # 현재 단계 단가
+        }
+    def get_usage_types(self):
+        # 실제 웹에서 가져오거나 미리 정의된 딕셔너리 리턴
+        return {"domestic": "가정용", "commercial": "일반용"}
+
+    def get_pipe_sizes(self):
+        # 해당 지자체에서 제공하는 구경 목록 리턴
+        return {13: "13mm", 20: "20mm", 25: "25mm"}
+
+
 def get_rates():
     """구미시 요율표 HTML을 파싱하여 데이터를 구조화합니다."""
     url = "https://waterpay.gumi.go.kr/waterpay/ncoe/info/guide.do?guideId=calculationStandardTable&tab=1"
