@@ -35,20 +35,25 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
+        """첫 번째 설정 단계"""
+        errors = {}
+        
         if user_input is not None:
             self.init_data = user_input
-            # 구미시 등을 선택하고 구경별 정액요금을 적용할 때만 다음 단계로
-            if user_input.get("apply_fixed_rate"):
-                return await self.async_step_pipe()
-            
-            # 체크 해제 시 즉시 생성
-            return self.async_create_entry(
-                title=f"수도 요금 ({user_input['authority']})", 
-                data=self.init_data
-            )
+            try:
+                # '구경별 정액요금 적용'이 체크된 경우에만 pipe 단계로 이동
+                if user_input.get("apply_fixed_rate"):
+                    return await self.async_step_pipe()
+                
+                # 체크 안 된 경우 즉시 생성
+                return self.async_create_entry(
+                    title=f"수도 요금 ({user_input['authority']})", 
+                    data=self.init_data
+                )
+            except Exception: # 예기치 못한 에러 방지
+                errors["base"] = "unknown"
 
-        # 블로킹 호출 방지: 별도 스레드에서 실행
+        # 스크래퍼 목록 비동기로 가져오기
         scraper_options = await self.hass.async_add_executor_job(sync_get_scraper_list)
         
         DATA_SCHEMA = vol.Schema({
@@ -68,8 +73,9 @@ class WaterBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user", 
-            data_schema=DATA_SCHEMA
-        ) # 이 괄호들이 잘 닫혀 있는지 확인!
+            data_schema=DATA_SCHEMA,
+            errors=errors
+        )
 
     async def async_step_pipe(self, user_input=None):
         """2단계 (분기A): 스크래퍼 기반 구경 선택 단계"""
